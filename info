@@ -8,6 +8,7 @@ node{
 		sh "${mvn} clean package"
 	}
 	stage('Build Docker Image'){
+	    sh 'docker rm -f Person'
 		sh 'docker build -f docker/Dockerfile -t ricardomaximino/reactive-funcitional-style:1.0.0 --build-arg=PROJECT_NAME=person --build-arg=PROJECT_VERSION=0.0.1 .'
 	}
 	stage('Push Docker Image'){
@@ -21,8 +22,8 @@ node{
 	}
 	stage('Deploy the Image in a different machine'){
 		def dockerRun = 'docker run -p 8080:8080 -d --name Person ricardomaximino/reactive-funcitional-style:1.0.0'
-		sshagent(['my-key']) {
-			sh "ssh -o StrictHostKeyChecking=no root@212.47.248.255 ${dockerRun}"
+		sshagent(['scaleway-worker']) {
+			sh "ssh -o StrictHostKeyChecking=no root@163.172.130.53 ${dockerRun}"
 		}
 	}
 }
