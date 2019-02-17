@@ -1,0 +1,30 @@
+node{
+    stage('Git Checkout'){
+        git credentialsId: 'github-hotmail', url: 'https://github.com/ricardomaximino/reactive-funcitional-style', branch: 'feature/jenkins'
+    }
+	stage('Maven Package'){
+		def mavenHome = tool name: 'Maven', type: 'maven'
+		def mvn = "${mavenHome}/bin/mvn"
+		sh "${mvn} clean package"
+	}
+	stage('Build Docker Image'){
+		sh 'docker build -f docker/Dockerfile -t ricardomaximino/reactive-funcitional-style:1.0.0 --build-arg=PROJECT_NAME=person --build-arg=PROJECT_VERSION=0.0.1 .'
+	}
+	stage('Push Docker Image'){
+		withCredentials([string(credentialsId: 'docker-pwd', variable: 'dockerHubPwd')]) {
+			sh "docker login -u ricardomaximino -p ${dockerHubPwd}"
+		}		
+		sh 'docker push ricardomaximino/reactive-funcitional-style:1.0.0'
+	}
+	stage('Deploy in the same Deamon'){
+	 sh 'docker run -d --name Person -p 9090:8080 ricardomaximino/reactive-funcitional-style:1.0.0'   
+	}
+	stage('Deploy the Image in a different machine'){
+		def dockerRun = 'docker run -p 8080:8080 -d --name Person ricardomaximino/reactive-funcitional-style:1.0.0'
+		sshagent(['my-key']) {
+			sh "ssh -o StrictHostKeyChecking=no root@212.47.248.255 ${dockerRun}"
+		}
+	}
+}
+
+docker run -p 8080:8080 -p 50000:50000 -v /brasajava/jenkins/home:/var/jenkins_home -v /var/run/docker.sock:/var/run/docker.sock jenkins/jenkins:lts
